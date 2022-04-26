@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io' as io;
 import 'dart:convert';
 
+import 'package:antisocial_vid_bot/yt-dlp.dart';
+
 import 'package:http/http.dart' as http;
 
 import 'package:teledart/teledart.dart';
@@ -24,28 +26,19 @@ Future<void> main() async {
 
   teledart
     .onUrl(RegExp('instagram'))
-    .listen((message) async => message.replyVideo(
-      await instagramVideo(message.text!), 
-      disable_notification: true, 
+    .listen((message) async => 
+      message.replyVideo(await ytdlp.download(url: message.text!),
+      disable_notification: true,
       withQuote: true,
       caption: await getInstagramTitle(message.text!, bibliogramInstance)));
 
   teledart
     .onUrl(RegExp('tiktok'))
-    .listen((message) async => message.replyVideo(
-      await tiktokVideo(message.text!), 
-      disable_notification: true, 
-      withQuote: true, 
+    .listen((message) async => 
+      message.replyVideo(await ytdlp.download(url: message.text!),
+      disable_notification: true,
+      withQuote: true,
       caption: await getTiktokTitle(message.text!)));
-}
-
-Future<dynamic> instagramVideo(String url) async {
-  print("received instagram request");
-  final String file = 'instagram_video.mp4';
-  final result = await io.Process.run(
-    'yt-dlp', [url,'--force-overwrites', '-o', file]);
-  print(result.stdout);
-  return(io.File(file));
 }
 
 Future<String> getInstagramTitle(String url, String bibliogramUrl) async {
@@ -53,31 +46,23 @@ Future<String> getInstagramTitle(String url, String bibliogramUrl) async {
     return "";
   }
   List urlPathSegments = Uri.parse(url).pathSegments;
-  var response = await http.get(
-    Uri.parse('https://$bibliogramUrl/${urlPathSegments[0]}/json/${urlPathSegments[1]}'));
+  var response = await http.get(Uri.parse(
+      'https://$bibliogramUrl/${urlPathSegments[0]}/json/${urlPathSegments[1]}'));
   var json = jsonDecode(response.body);
-  return (json['data']['edge_media_to_caption']['edges'][0]['node']['text'].split('\n')[0]);
-}
-
-Future<dynamic> tiktokVideo(String url) async {
-  print("received tiktok request");
-  final String file = 'tiktok_video.mp4';
-  final result = await io.Process.run(
-    'yt-dlp', [url, '--force-overwrites', '-o', file]);
-  print(result.stdout);
-  return(io.File(file));
+  return (json['data']['edge_media_to_caption']['edges'][0]['node']['text']
+      .split('\n')[0]);
 }
 
 Future<String> getFullTiktokUrl(String url) async {
   final curlProcess = await io.Process.run(
-    'curl', ['-sL', '-w %{url_effective}', '-o /dev/null', url]);
-  return(curlProcess.stdout);
+      'curl', ['-sL', '-w %{url_effective}', '-o /dev/null', url]);
+  return (curlProcess.stdout);
 }
 
 Future<String> getTiktokTitle(String url) async {
   final fullUrl = await getFullTiktokUrl(url);
-  var response = await http.get(
-    Uri.parse('https://www.tiktok.com/oembed?url=${fullUrl.replaceAll(' ', '')}'));
+  var response = await http.get(Uri.parse(
+      'https://www.tiktok.com/oembed?url=${fullUrl.replaceAll(' ', '')}'));
   var json = jsonDecode(response.body);
-  return(json['title']);
+  return (json['title']);
 }
